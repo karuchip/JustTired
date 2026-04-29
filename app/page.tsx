@@ -26,6 +26,12 @@ export default function Home() {
   // DBから取得した値
   const [list, setList] = useState<Stamp[]>([]);
 
+  // 一度表示したスタンプのidは保存
+  const lastIdRef = useRef(0);
+
+  // 初期化終わるまでfetchしないためのフラグ
+  const [initialized, setInitialized] = useState(false);
+
   const words:Word[] = [
     {
       id: 1,
@@ -38,33 +44,62 @@ export default function Home() {
     {
       id:3,
       word:"よくやった"
+    },
+    {
+      id:4,
+      word:"えらすぎ"
     }
   ]
 
-  // DBから取得
+  // 初期化処理 (現在のID)
   useEffect(() => {
+    const init = async () => {
+      const res = await fetch('/api/tired?mode=init');
+      const data = await res.json();
+
+      lastIdRef.current = data.max_id ?? 0;
+
+      // 初期化が終了したことを伝える
+      setInitialized(true);
+    };
+
+    init();
+  }, []);
+
+  // 差分だけ取得
+  useEffect(() => {
+    if(!initialized) return;
+
     const fetchData = async () => {
-      const res = await fetch('/api/tired');
+      const res = await fetch(`/api/tired?lastId=${lastIdRef.current}`);
       const data: TiredItem[] = await res.json();
 
-      setList(
-        data.map((item: TiredItem) => {
-          return {
-            id: item.id,
-            text: item.text || '',
-            left: Math.random() * 80
-          };
-        })
-      );
+      setList(prev => {
 
-      console.log(data);
+        const existingIds = new Set(prev.map(p => p.id));
+
+        const newItems = data
+        .filter(item => !existingIds.has(item.id))
+        .map((item: TiredItem) => ({
+          id: item.id,
+          text: item.text,
+          left: Math.random() * 80
+        }));
+
+        // 最新IDに更新
+        if (data.length > 0) {
+          lastIdRef.current = data[data.length -1].id;
+        }
+
+        return [...prev, ...newItems];
+      })
     }
 
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(fetchData, 3000);
 
     return () => clearInterval(interval);
-  }, [])
+  }, [initialized])
 
 
   // 疲れたボタン押下時
@@ -109,45 +144,50 @@ export default function Home() {
 
   return (
     <>
-      {/* 自分が押下した分の表示 */}
-      <div className="relative h-[200px] border m-10">
-        {stamps.map((stamp) => (
-          <p
-            key={stamp.id}
+      <div className="mt-10">
+        <h1 className="text-indigo-500 text-[42px] w-fit mx-auto">Just Tired</h1>
+        <h2 className="w-fit mx-auto text-[22px]">疲れたって言いたい！</h2>
+      </div>
+      <div className="relative h-[300px] m-10">
+        {/* 自分が押下した分の表示 */}
+        <div className="absolute left-0 top-0 w-full h-full border">
+          {stamps.map((stamp) => (
+            <p
+            key={`self-${stamp.id}`}
             className="absolute animate-float text-indigo-500 font-bold"
             style={{
               left: `${stamp.left}%`,
             }}
-          >
-            {stamp.text}
-          </p>
-        ))}
-      </div>
+            >
+              {stamp.text}
+            </p>
+          ))}
+        </div>
 
-      {/* 他者分 */}
-      <div className="relative h-[200px] border m-10">
-        {list.map((li) => (
-          <p
-            key={li.id}
-            className="absolute animate-float text-indigo-500 font-bold"
+        {/* 他者分 */}
+        <div className="absolute left-0 top-0 w-full h-full border">
+          {list.map((li) => (
+            <p
+            key={`other-${li.id}`}
+            className="absolute animate-float text-[#888888] font-bold"
             style={{
               left: `${li.left}%`,
             }}
-          >
-            {li.text}
-          </p>
-        ))}
+            >
+              {li.text}
+            </p>
+          ))}
+        </div>
       </div>
-
 
       <div className="flex gap-10 justify-center">
         {words.map((item) => (
-          <div key={item.id} className="w-fit">
+          <div key={`button-${item.id}`} className="w-fit">
             <button
               disabled={disable}
               onClick={()=>handleSendStamp(item.id)}
               className="disabled:text-gray-500 bg-indigo-500 text-white px-3"
-            >
+              >
               {item.word}
             </button>
           </div>
