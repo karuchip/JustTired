@@ -123,6 +123,23 @@ export default function Home() {
 
     const newStampId = ++idRef.current;
 
+    // ①まず画面に表示
+    setStamps((prev) => [
+      ...prev,
+      {
+        id: newStampId,
+        text: selected.word,
+        left: Math.random() * 80
+      }
+    ]);
+
+    // ②一定時間後に画面から削除
+    setTimeout(() => {
+      setStamps((prev) => prev.filter(s => s.id !== newStampId));
+    }, 20000);
+
+
+    // ③バックグラウンドでDBに保存
     await fetch('/api/tired', {
       method: 'POST',
       headers: {
@@ -134,24 +151,9 @@ export default function Home() {
       })
     });
 
-    // スタンプ追加
-    setStamps((prev) => [
-      ...prev,
-      {
-        id: newStampId,
-        text: selected.word,
-        left: Math.random() * 80
-      }
-    ]);
-
-    // 一定時間ごに削除
-    setTimeout(() => {
-      setStamps((prev) => prev.filter(s => s.id !== newStampId));
-    }, 20000);
-
     setTimeout(() => {
       setDisable(false);
-    }, 2000);
+    }, 1000);
   };
 
   return (
@@ -166,7 +168,7 @@ export default function Home() {
           {stamps.map((stamp) => (
             <p
             key={`self-${stamp.id}`}
-            className="absolute animate-float text-indigo-500 font-bold"
+            className="absolute animate-float text-indigo-900 font-bold"
             style={{
               left: `${stamp.left}%`,
             }}
@@ -192,13 +194,13 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex gap-10 justify-center">
+      <div className="flex flex-wrap gap-4 md:gap-10 mx-10 md:justify-center ">
         {words.map((item) => (
           <div key={`button-${item.id}`} className="w-fit">
             <button
               disabled={disable}
               onClick={()=>handleSendStamp(item.id)}
-              className="disabled:text-gray-500 bg-indigo-500 text-white px-3"
+              className="disabled:text-gray-500 bg-indigo-500 font-bold text-white p-2 w-fit rounded-md whitespace-nowrap"
               >
               {item.word}
             </button>
