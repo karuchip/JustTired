@@ -1,4 +1,5 @@
 "use client"
+import { getAnonymousId } from "@/src/lib/anonymousUser";
 import { useState, useRef, useEffect } from "react";
 
 type Stamp = {
@@ -32,6 +33,9 @@ export default function Home() {
   // 初期化終わるまでfetchしないためのフラグ
   const [initialized, setInitialized] = useState(false);
 
+  // 匿名ID保存用のref
+  const anonymousIdRef = useRef<string | null>(null)
+
   const words:Word[] = [
     {
       id: 1,
@@ -54,12 +58,17 @@ export default function Home() {
   // 初期化処理 (現在のID)
   useEffect(() => {
     const init = async () => {
+
+      // ①匿名ID準備
+      anonymousIdRef.current = getAnonymousId();
+
+      // ②現在の最大投稿ID取得
       const res = await fetch('/api/tired?mode=init');
       const data = await res.json();
 
       lastIdRef.current = data.max_id ?? 0;
 
-      // 初期化が終了したことを伝える
+      // ③初期化完了
       setInitialized(true);
     };
 
@@ -71,7 +80,7 @@ export default function Home() {
     if(!initialized) return;
 
     const fetchData = async () => {
-      const res = await fetch(`/api/tired?lastId=${lastIdRef.current}`);
+      const res = await fetch(`/api/tired?lastId=${lastIdRef.current}&anonymousId=${anonymousIdRef.current}`);
       const data: TiredItem[] = await res.json();
 
       setList(prev => {
@@ -119,7 +128,10 @@ export default function Home() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ text: selected.word })
+      body: JSON.stringify({
+        text: selected.word,
+        anonymousId: anonymousIdRef.current
+      })
     });
 
     // スタンプ追加

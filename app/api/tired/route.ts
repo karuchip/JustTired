@@ -12,6 +12,12 @@ export async function GET(req: Request) {
     return Response.json(result[0]);
   }
 
+  // 匿名ID取得
+  const anonymousId = searchParams.get('anonymousId');
+  if(!anonymousId) {
+    return Response.json({error: "anonymousId is required"}, {status: 400})
+  }
+
   // 差分取得処理
   const raw = searchParams.get('lastId')
   const lastId = Number(raw);
@@ -20,21 +26,22 @@ export async function GET(req: Request) {
   const result = await sql `
     SELECT * FROM tired_posts
     WHERE id > ${safeId}
+    AND anonymous_id <> ${anonymousId}
     ORDER BY created_at ASC
   `;
   return Response.json(result);
 }
 
 export async function POST(req:Request) {
-  const {text} = await req.json();
+  const {text, anonymousId} = await req.json();
 
   if(typeof text !== "string") {
     return Response.json({error: "invalid"}, {status: 400});
   }
 
   await sql`
-  INSERT INTO tired_posts (text)
-  VALUES (${text})
+  INSERT INTO tired_posts (text, anonymous_id)
+  VALUES (${text}, ${anonymousId})
   `;
 
   return Response.json({ok: true});
