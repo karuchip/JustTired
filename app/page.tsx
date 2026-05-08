@@ -1,6 +1,8 @@
 "use client"
 import { getAnonymousId } from "@/src/lib/anonymousUser";
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import TiredButton from "./components/tired-button";
 
 type Stamp = {
   id: number;
@@ -157,57 +159,98 @@ export default function Home() {
   };
 
   return (
-    <>
-      <div className="mt-10">
-        <h1 className="text-indigo-500 text-[42px] w-fit mx-auto">Just Tired</h1>
-        <h2 className="w-fit mx-auto text-[22px]">疲れたって言いたい！</h2>
-      </div>
-      <div className="relative h-[300px] m-10">
-        {/* 自分が押下した分の表示 */}
-        <div className="absolute left-0 top-0 w-full h-full border">
-          {stamps.map((stamp) => (
-            <p
-            key={`self-${stamp.id}`}
-            className="absolute animate-float text-indigo-900 font-bold"
-            style={{
-              left: `${stamp.left}%`,
-            }}
-            >
-              {stamp.text}
-            </p>
-          ))}
+    <div>
+
+      <div className="relative z-100">
+        <div className="mt-10">
+          <h1 className="text-[#ffffff] text-[32px] md:text-[68px] w-fit mx-auto">Just Tired</h1>
+          <h2 className="text-[#ffffff] w-fit mx-auto text-[16px] md:text-[22px]">疲れたって言いたい！</h2>
         </div>
 
-        {/* 他者分 */}
-        <div className="absolute left-0 top-0 w-full h-full border">
-          {list.map((li) => (
-            <p
-            key={`other-${li.id}`}
-            className="absolute animate-float text-[#888888] font-bold"
-            style={{
-              left: `${li.left}%`,
-            }}
-            >
-              {li.text}
-            </p>
-          ))}
-        </div>
-      </div>
+        <div className="relative h-[500px] md:h-[600px] my-10 overflow-x-hidden">
+          {/* 自分が押下した分の表示 */}
+          <div className="absolute left-0 top-0 w-full h-full">
+            {stamps.map((stamp) => (
+              <div key={`self-${stamp.id}`}>
 
-      <div className="flex flex-wrap gap-4 md:gap-10 mx-10 md:justify-center ">
-        {words.map((item) => (
-          <div key={`button-${item.id}`} className="w-fit">
-            <button
-              disabled={disable}
-              onClick={()=>handleSendStamp(item.id)}
-              className="disabled:text-gray-500 bg-indigo-500 font-bold text-white p-2 w-fit rounded-md whitespace-nowrap"
-              >
-              {item.word}
-            </button>
+                <p
+                className="
+                  absolute animate-float font-bold text-[26px] md:text-[42px] whitespace-nowrap
+                  /* 文字の色：少し薄い色にすると光って見えます */
+                  text-[#ffffff]
+                  /* ネオンエフェクト（外側の光） */
+                  drop-shadow-[0_0_15px_rgba(165,180,252,0.8)]
+                  drop-shadow-[0_0_30px_rgba(79,70,229,0.5)]
+
+                  /* 縁取り（よりクッキリさせる場合） */
+                  [text-shadow:_0_0_10px_rgba(79,70,229,0.8),_0_0_20px_rgba(79,70,229,0.4)]
+                "
+                style={{
+                  left: `${stamp.left}%`,
+                }}
+                >
+                  {stamp.text}
+                </p>
+
+                <p
+                  className="
+                    absolute animate-slide w-fit whitespace-nowrap
+                    text-[80px] md:text-[160px] font-black
+
+                    /* 文字の色：少し薄い色にすると光って見えます */
+                    text-indigo-100
+
+                    /* ネオンエフェクト（外側の光） */
+                    drop-shadow-[0_0_15px_rgba(165,180,252,0.8)]
+                    drop-shadow-[0_0_30px_rgba(79,70,229,0.5)]
+
+                    /* 縁取り（よりクッキリさせる場合） */
+                    [text-shadow:_0_0_10px_rgba(79,70,229,0.8),_0_0_20px_rgba(79,70,229,0.4)]
+                  "
+                >
+                  {stamp.text}
+                </p>
+
+              </div>
+            ))}
           </div>
-        ))}
+
+
+          {/* 他者分 */}
+          <div className="absolute left-0 top-0 w-full h-full text-[18px] md:text-[28px]">
+            {list.map((li) => (
+              <p
+              key={`other-${li.id}`}
+              className="absolute animate-float text-[#ffffff] font-bold"
+              style={{
+                left: `${li.left}%`,
+              }}
+              >
+                {li.text}
+              </p>
+            ))}
+          </div>
+        </div>
       </div>
-    </>
+
+      <TiredButton
+        handleSendStamp={handleSendStamp}
+        words={words}
+        disable={disable}
+      />
+
+
+      {/* 背景 */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src="/scene1.png"
+          alt="背景"
+          fill
+          priority
+          className="object-cover object-center"
+        />
+      </div>
+    </div>
   );
 }
 
