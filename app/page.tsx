@@ -207,7 +207,7 @@ export default function Home() {
 
       <div className="relative z-100">
 
-        <div className="m-10 bg-white/50 py-3 px-10 w-fit text-indigo-700 rounded-full md:text-[24px]">
+        <div className="mt-10 mx-auto md:m-10 bg-white/50 py-3 px-10 w-fit text-indigo-700 rounded-full md:text-[24px]">
           <p>これまでの「疲れた」: <span className="font-bold">{totalCount}回</span></p>
           <p>今日の「疲れた」: <span className="font-bold">{dailyCount}回</span></p>
         </div>
