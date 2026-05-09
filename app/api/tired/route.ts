@@ -62,6 +62,8 @@ export async function POST(req:Request) {
     VALUES (${text}, ${anonymousId})
     `;
 
+    return Response.json({ok: true});
+
   } catch (error) {
     console.error(error);
     return Response.json(
