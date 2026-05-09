@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@keyframes floatUpMine {
+@keyframes floatUpOther {
   0% {
     transform: translateY(300px);
     opacity: 1;
@@ -14,10 +14,11 @@
   }
 }
 
-.animate-float-mine {
-  animation: floatUp 10s ease-out forwards;
+.animate-float-other {
+  animation: floatUpOther 5s ease-out forwards;
 }
-@keyframes floatUp {
+
+@keyframes floatUpMine {
     0% {
     /* 初期位置 */
     transform: translate(0, 300px);
@@ -41,8 +42,8 @@
     }
   }
 
-.animate-float {
-  animation: floatUp 5s linear forwards;
+.animate-float-mine {
+  animation: floatUpMine 5s linear forwards;
 }
 
 
