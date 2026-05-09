@@ -13,7 +13,8 @@ export async function GET(req: Request) {
       const result = await sql `
         SELECT MAX(id) as max_id FROM tired_posts
       `;
-      return Response.json(result[0]?.max_id ?? 0)
+      console.log(`ここが問題です！！！${result[0]?.max_id ?? 0}`);
+      return Response.json(Number(result[0]?.max_id) ?? 0)
     }
 
     // 匿名ID取得

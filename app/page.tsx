@@ -77,7 +77,7 @@ export default function Home() {
       const resMaxId = await fetch('/api/tired?mode=init');
       const dataMaxId = await resMaxId.json();
 
-      lastIdRef.current = dataMaxId.max_id;
+      lastIdRef.current = dataMaxId;
 
       // ③DBから疲れたカウント数を取得
       const resCount = await fetch('/api/tired/stats')
