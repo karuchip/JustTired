@@ -27,28 +27,3 @@ export async function GET () {
     )
   }
 }
-
-
-export async function POST() {
-  try {
-    await sql`
-    INSERT INTO tired_stats (stat_date, daily_count)
-    VALUES(CURRENT_DATE, 1)
-    ON CONFLICT (stat_date)
-    DO UPDATE
-    SET
-      daily_count = tired_stats.daily_count + 1,
-      updated_at = NOW()
-    `;
-
-    return Response.json({ok: true});
-
-  }catch(error) {
-    console.error(error);
-
-    return Response.json(
-      {error: 'server error'},
-      {status: 500}
-    )
-  }
-}

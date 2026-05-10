@@ -1,70 +1,34 @@
 "use client"
 import { getAnonymousId } from "@/src/lib/anonymousUser";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import TiredButton from "./components/tired-button";
+import { StampType} from "@/src/type";
+import SelfStampLayer from "./components/SelfStampLayer";
+import OtherStampLayer from "./components/OtherStampLayer";
+import { POLLING_INTERVAL, COUNT_INTERVAL, STAMP_DURATION } from "@/src/lib/constants/intervalConstants";
+import { fetchInitialTiredData, fetchTiredPost, sendTiredPost } from "@/src/lib/api/tiredApi";
+import usePolling from "@/src/lib/hooks/usePolling";
+import fetchCount from "@/src/lib/api/tiredStatsApi";
+import { words } from "@/src/lib/constants/stampWordConstants";
 
-type Stamp = {
-  id: number;
-  text: string;
-  left: number;
-}
-
-type Word = {
-  id: number;
-  word: string;
-}
-
-type TiredItemType = {
-  id: number;
-  text: string;
-  created_at: Date;
-}
-
-type CountItemType = {
-  daily_count: number;
-  total_count: number;
-}
 
 export default function Home() {
 
-  const [stamps, setStamps] = useState<Stamp[]>([]);
+  const [stamps, setStamps] = useState<StampType[]>([]);
   const [disable, setDisable] = useState(false);
   const idRef = useRef(0);
   // DBから取得した値
-  const [list, setList] = useState<Stamp[]>([]);
-
+  const [list, setList] = useState<StampType[]>([]);
   // 一度表示したスタンプのidは保存
   const lastIdRef = useRef(0);
-
   // 疲れた件数を保存
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [totalCount, setTotalCount] = useState<number>(0);
-
   // 初期化終わるまでfetchしないためのフラグ
-  const [initialized, setInitialized] = useState(false);
-
+  const [isReadyToPoll, setIsReadyToPoll] = useState(false);
   // 匿名ID保存用のref
   const anonymousIdRef = useRef<string | null>(null)
-
-  const words:Word[] = [
-    {
-      id: 1,
-      word: "疲れた"
-    },
-    {
-      id:2,
-      word:"お腹すいた",
-    },
-    {
-      id:3,
-      word:"よくやった"
-    },
-    {
-      id:4,
-      word:"えらすぎ"
-    }
-  ]
 
   // 初期化処理 (現在のID)
   useEffect(() => {
@@ -74,8 +38,7 @@ export default function Home() {
       anonymousIdRef.current = getAnonymousId();
 
       // ②DBから現在の最大投稿IDを取得
-      const resMaxId = await fetch('/api/tired?mode=init');
-      const dataMaxId = await resMaxId.json();
+      const dataMaxId = await fetchInitialTiredData()
 
       lastIdRef.current = dataMaxId;
 
@@ -86,67 +49,56 @@ export default function Home() {
       setTotalCount(dataCount.total_count);
 
       // ④初期化完了
-      setInitialized(true);
+      setIsReadyToPoll(true);
     };
-
     init();
   }, []);
 
 
-  // 投稿の差分取得 ポーリングにて3秒間隔で
-  useEffect(() => {
-    if(!initialized) return;
+  // 投稿ポーリング取得用関数
+  const handleFetchPosts = useCallback(async () => {
 
-    const fetchData = async () => {
-      const res = await fetch(`/api/tired?lastId=${lastIdRef.current}&anonymousId=${anonymousIdRef.current}`);
-      const data: TiredItemType[] = await res.json();
+    // api通信
+    const data = await fetchTiredPost({
+      lastId: lastIdRef.current,
+      anonymousId: anonymousIdRef.current!,
+    })
 
-      setList(prev => {
+    setList(prev => {
 
-        const existingIds = new Set(prev.map(p => p.id));
+      const existingIds = new Set(prev.map(p => p.id));
 
-        const newItems = data
+      const newItems = data
         .filter(item => !existingIds.has(item.id))
-        .map((item: TiredItemType) => ({
+        .map(item => ({
           id: item.id,
           text: item.text,
           left: Math.random() * 80
         }));
 
-        // 最新IDに更新
-        if (data.length > 0) {
-          lastIdRef.current = data[data.length -1].id;
+        if(data.length > 0) {
+          lastIdRef.current = data[data.length - 1]. id;
         }
 
         return [...prev, ...newItems];
-      })
-    }
+    });
+  }, []);
 
-    fetchData();
-    const interval = setInterval(fetchData, 3000);
 
-    return () => clearInterval(interval);
-  }, [initialized])
+  // 投稿の差分取得 ポーリングにて3秒ごとに
+  usePolling({
+    enabled: isReadyToPoll,
+    interval: POLLING_INTERVAL,
+    callback: handleFetchPosts,
+  })
 
 
   // 疲れた件数の取得　ポーリングで10秒ごとに
-  useEffect(() => {
-    if(!initialized) return;
-
-    const fetchCount = async() => {
-      const res = await fetch(`api/tired/stats`);
-      const data:CountItemType = await res.json();
-
-      setDailyCount(data.daily_count);
-      setTotalCount(data.total_count);
-    }
-
-    fetchCount();
-    const countInterval = setInterval(fetchCount, 10000);
-
-    return ()=> clearInterval(countInterval)
-
-  },[initialized])
+  usePolling({
+    enabled: isReadyToPoll,
+    interval: COUNT_INTERVAL,
+    callback: () => fetchCount({ setDailyCount, setTotalCount })
+  })
 
 
   // 疲れたボタン押下時の処理
@@ -177,25 +129,11 @@ export default function Home() {
     // ②一定時間後に画面から削除
     setTimeout(() => {
       setStamps((prev) => prev.filter(s => s.id !== newStampId));
-    }, 5000);
+    }, STAMP_DURATION);
 
 
-    // ③バックグラウンドで投稿をDBに保存
-    await fetch('/api/tired', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: selected.word,
-        anonymousId: anonymousIdRef.current
-      })
-    });
-
-    // ④バックグラウンドでDBの疲れたカウントを+1
-    await fetch('/api/tired/stats', {
-      method: 'POST'
-    })
+    // ③バックグラウンドで投稿とカウントをDBに保存
+    await sendTiredPost({selected, anonymousId: anonymousIdRef.current!})
 
     setTimeout(() => {
       setDisable(false);
@@ -217,71 +155,12 @@ export default function Home() {
         </div>
 
         <div className="relative h-[500px] md:h-[600px] my-10 overflow-x-hidden">
-          {/* 自分が押下した分の表示 */}
-          <div className="absolute left-0 top-0 w-full h-full">
-            {stamps.map((stamp) => (
-              <div key={`self-${stamp.id}`}>
-
-                <p
-                className="
-                  absolute animate-float-mine font-bold text-[26px] md:text-[42px] whitespace-nowrap
-                  px-6 py-1 bg-white/50 rounded-full
-
-                  /* 文字の色：少し薄い色にすると光って見えます */
-                  text-[#ffffff]
-                  /* ネオンエフェクト（外側の光） */
-                  drop-shadow-[0_0_15px_rgba(165,180,252,0.8)]
-                  drop-shadow-[0_0_30px_rgba(79,70,229,0.5)]
-
-                  /* 縁取り（よりクッキリさせる場合） */
-                  [text-shadow:_0_0_10px_rgba(79,70,229,0.8),_0_0_20px_rgba(79,70,229,0.4)]
-                "
-                style={{
-                  left: `${stamp.left}%`,
-                }}
-                >
-                  {stamp.text}
-                </p>
-
-                <p
-                  className="
-                    absolute animate-slide w-fit whitespace-nowrap
-                    text-[80px] md:text-[160px] font-black
-
-                    /* 文字の色：少し薄い色にすると光って見えます */
-                    text-indigo-100
-
-                    /* ネオンエフェクト（外側の光） */
-                    drop-shadow-[0_0_15px_rgba(165,180,252,0.8)]
-                    drop-shadow-[0_0_30px_rgba(79,70,229,0.5)]
-
-                    /* 縁取り（よりクッキリさせる場合） */
-                    [text-shadow:_0_0_10px_rgba(79,70,229,0.8),_0_0_20px_rgba(79,70,229,0.4)]
-                  "
-                >
-                  {stamp.text}
-                </p>
-
-              </div>
-            ))}
-          </div>
-
-
+          {/* 自分の分 */}
+          <SelfStampLayer stamps={stamps}/>
           {/* 他者分 */}
-          <div className="absolute left-0 top-0 w-full h-full text-[18px] md:text-[28px]">
-            {list.map((li) => (
-              <p
-              key={`other-${li.id}`}
-              className="absolute animate-float-other text-gray font-bold"
-              style={{
-                left: `${li.left}%`,
-              }}
-              >
-                {li.text}
-              </p>
-            ))}
-          </div>
+          <OtherStampLayer list={list}/>
         </div>
+
       </div>
 
       <TiredButton
@@ -291,7 +170,7 @@ export default function Home() {
       />
 
 
-      {/* 背景 */}
+      {/* 背景イメージ */}
       <div className="fixed inset-0 z-0">
         <Image
           src="/scene1.png"
