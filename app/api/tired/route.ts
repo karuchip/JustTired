@@ -62,6 +62,17 @@ export async function POST(req:Request) {
     VALUES (${text}, ${anonymousId})
     `;
 
+    // カウント保存
+    await sql`
+    INSERT INTO tired_stats (stat_date, daily_count)
+    VALUES(CURRENT_DATE, 1)
+    ON CONFLICT (stat_date)
+    DO UPDATE
+    SET
+      daily_count = tired_stats.daily_count + 1,
+      updated_at = NOW()
+    `;
+
     return Response.json({ok: true});
 
   } catch (error) {
