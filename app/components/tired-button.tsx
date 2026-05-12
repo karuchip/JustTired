@@ -30,7 +30,7 @@ const prevButton = () => {
 const currentItem = words[currentIndex];
 
 return (
-  <div className="absolute z-[100] bottom-10 w-full flex justify-center items-center gap-8">
+  <div className="absolute z-[100] bottom-5 w-full flex justify-center items-center gap-8">
 
     {/* 左ボタン */}
     <button
