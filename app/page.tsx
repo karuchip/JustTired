@@ -11,7 +11,7 @@ import { fetchInitialTiredData, fetchTiredPost, sendTiredPost } from "@/src/lib/
 import usePolling from "@/src/lib/hooks/usePolling";
 import fetchCount from "@/src/lib/api/tiredStatsApi";
 import { words } from "@/src/lib/constants/stampWordConstants";
-
+import Loading from "@/app/components/Loading"
 
 export default function Home() {
 
@@ -27,6 +27,9 @@ export default function Home() {
   const [totalCount, setTotalCount] = useState<number>(0);
   // 初期化終わるまでfetchしないためのフラグ
   const [isReadyToPoll, setIsReadyToPoll] = useState(false);
+  // ローディング表示用
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataReady, setDataReady] = useState(false);
   // 匿名ID保存用のref
   const anonymousIdRef = useRef<string | null>(null)
 
@@ -48,11 +51,31 @@ export default function Home() {
       setDailyCount(dataCount.daily_count);
       setTotalCount(dataCount.total_count);
 
-      // ④初期化完了
+      // ⑤初期化完了
       setIsReadyToPoll(true);
+      // Loading表示用
+      setDataReady(true);
     };
     init();
+
+    // 最低でも2秒間はLoading表示
+    const timer = setTimeout(() => {
+      if (dataReady) {
+        setIsLoading(false);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
+
+  // データとタイマーの両方が揃ったタイミングでLoadingを消す
+  useEffect(() => {
+    if(dataReady) {
+      const finalTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500)
+      return () => clearTimeout(finalTimer);
+    }
+  },[dataReady])
 
 
   // 投稿ポーリング取得用関数
@@ -141,20 +164,26 @@ export default function Home() {
   };
 
   return (
-    <div>
+    <div className="relative z-0">
+      {isLoading && (
+        <div className="fixed inset-0 z-[1000] bg-black/80 items-center justify-center">
+          <Loading/>
+        </div>
+      )}
 
       <div className="relative z-100">
 
-        <div className="mt-10 mx-auto md:m-10 bg-white/50 py-3 px-10 w-fit text-indigo-700 rounded-full md:text-[24px]">
+        <div className="mt-10 lg:mt-5 mx-auto lg:absolute lg:top-3 lg:left-5 bg-white/50 py-3 px-10 w-fit text-indigo-700 rounded-full lg:text-[20px]">
           <p>これまでの「疲れた」: <span className="font-bold">{totalCount}回</span></p>
           <p>今日の「疲れた」: <span className="font-bold">{dailyCount}回</span></p>
         </div>
-        <div className="mt-10">
-          <h1 className="text-[#ffffff] text-[32px] md:text-[68px] w-fit mx-auto">Just Tired</h1>
+
+        <div className="mt-5 lg:mt-10">
+          <h1 className="text-[#ffffff] text-[46px] md:text-[68px] w-fit mx-auto">Just Tired</h1>
           <h2 className="text-[#ffffff] w-fit mx-auto text-[16px] md:text-[22px]">疲れたって言いたい！</h2>
         </div>
 
-        <div className="relative h-[500px] md:h-[600px] my-10 overflow-x-hidden">
+        <div className="relative h-[60vh] my-10 overflow-x-hidden">
           {/* 自分の分 */}
           <SelfStampLayer stamps={stamps}/>
           {/* 他者分 */}
