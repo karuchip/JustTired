@@ -28,7 +28,8 @@ export default function Home() {
   // 初期化終わるまでfetchしないためのフラグ
   const [isReadyToPoll, setIsReadyToPoll] = useState(false);
   // ローディング表示用
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataReady, setDataReady] = useState(false);
   // 匿名ID保存用のref
   const anonymousIdRef = useRef<string | null>(null)
 
@@ -50,12 +51,31 @@ export default function Home() {
       setDailyCount(dataCount.daily_count);
       setTotalCount(dataCount.total_count);
 
-      // ④初期化完了
+      // ⑤初期化完了
       setIsReadyToPoll(true);
-      setLoading(true);
+      // Loading表示用
+      setDataReady(true);
     };
     init();
+
+    // 最低でも2秒間はLoading表示
+    const timer = setTimeout(() => {
+      if (dataReady) {
+        setIsLoading(false);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
+
+  // データとタイマーの両方が揃ったタイミングでLoadingを消す
+  useEffect(() => {
+    if(dataReady) {
+      const finalTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500)
+      return () => clearTimeout(finalTimer);
+    }
+  },[dataReady])
 
 
   // 投稿ポーリング取得用関数
@@ -145,7 +165,7 @@ export default function Home() {
 
   return (
     <div className="relative z-0">
-      {!loading && (
+      {isLoading && (
         <div className="fixed inset-0 z-[1000] bg-black/80 items-center justify-center">
           <Loading/>
         </div>
